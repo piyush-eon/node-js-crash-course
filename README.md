@@ -1,8 +1,8 @@
-# Job Tracker API
+# Node JS Crash Course - Build a Job Tracker API
 
-A simple in-memory job application tracker built with Express, made for a YouTube tutorial. No database, no auth — just plain Node.js + Express CRUD routes to demonstrate the fundamentals.
+A simple in-memory job application tracker built with Node + Express.
 
-The project uses a routes/controllers split (`routes/applications.routes.js` defines the URLs, `controllers/applications.controller.js` holds the logic). A database and an auth layer are planned for a follow-up video — for now everything lives in memory.
+The project uses a routes/controllers split (`routes/applications.routes.js` defines the URLs, `controllers/applications.controller.js` holds the logic).
 
 ## Setup
 
