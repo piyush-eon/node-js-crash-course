@@ -1,0 +1,16 @@
+{
+  "name": "job-tracker-api",
+  "version": "1.0.0",
+  "description": "A simple in-memory job application tracker API built with Express, for tutorial purposes.",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.js",
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
