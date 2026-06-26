@@ -1,5 +1,11 @@
 # Node JS Crash Course - Build a Job Tracker API
 
+> **Documentation preview** — `swagger.yaml` is a standalone OpenAPI 3.0 spec and `swagger.html`
+> loads Swagger UI from a CDN pointed at that file. Neither is wired into the running server;
+> open `swagger.html` in a browser (via `file://` or `npx serve .`) for an offline interactive
+> preview of all endpoints without installing any extra npm packages.
+
+
 A simple in-memory job application tracker built with Node + Express.
 
 The project uses a routes/controllers split (`routes/applications.routes.js` defines the URLs, `controllers/applications.controller.js` holds the logic).

@@ -1,0 +1,323 @@
+openapi: 3.0.3
+info:
+  title: Job Application Tracker API
+  version: 1.0.0
+  description: >
+    A learning project built during a Node.js/Express crash course.
+    Uses in-memory storage only — no database, no authentication.
+    All data resets on server restart.
+
+servers:
+  - url: http://localhost:3000
+    description: Local dev server
+
+components:
+  schemas:
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        company:
+          type: string
+          example: Google
+        role:
+          type: string
+          example: SWE
+        status:
+          type: string
+          enum: [applied, interview, offer, rejected]
+          example: applied
+        appliedDate:
+          type: string
+          format: date
+          example: "2026-06-01"
+
+    SuccessEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          description: Payload — shape varies by endpoint
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Application not found
+
+paths:
+  /applications:
+    get:
+      summary: List all applications
+      description: >
+        Returns the full list of applications. Supports optional filtering by
+        status, sorting by applied date, and page/limit pagination. All query
+        params are independent and can be combined.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by application status
+          required: false
+          schema:
+            type: string
+            enum: [applied, interview, offer, rejected]
+          example: applied
+        - name: sort
+          in: query
+          description: Pass "date" to sort results ascending by appliedDate
+          required: false
+          schema:
+            type: string
+            enum: [date]
+        - name: page
+          in: query
+          description: Page number (1-based). Must be combined with limit.
+          required: false
+          schema:
+            type: integer
+            example: 1
+        - name: limit
+          in: query
+          description: Number of results per page. Must be combined with page.
+          required: false
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: Array of matching applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Application"
+              example:
+                success: true
+                data:
+                  - id: 1
+                    company: Google
+                    role: SWE
+                    status: applied
+                    appliedDate: "2026-06-01"
+                  - id: 2
+                    company: Microsoft
+                    role: Frontend Engineer
+                    status: interview
+                    appliedDate: "2026-06-05"
+
+    post:
+      summary: Create an application
+      description: >
+        Creates a new job application. company and role are required;
+        status defaults to "applied" if omitted. appliedDate is set
+        automatically to today's date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company, role]
+              properties:
+                company:
+                  type: string
+                  example: Google
+                role:
+                  type: string
+                  example: SWE
+                status:
+                  type: string
+                  enum: [applied, interview, offer, rejected]
+                  example: applied
+            example:
+              company: Google
+              role: SWE
+              status: applied
+      responses:
+        "201":
+          description: Newly created application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Application"
+              example:
+                success: true
+                data:
+                  id: 3
+                  company: Google
+                  role: SWE
+                  status: applied
+                  appliedDate: "2026-06-26"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: Company and role are required
+
+  /applications/stats:
+    get:
+      summary: Get application counts by status
+      description: >
+        Returns a tally of how many applications exist per status value.
+        Only statuses that have at least one application appear in the result.
+      responses:
+        "200":
+          description: Status counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: integer
+              example:
+                success: true
+                data:
+                  applied: 1
+                  interview: 1
+
+  /applications/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Numeric application ID
+        schema:
+          type: integer
+          example: 1
+
+    get:
+      summary: Get a single application
+      description: Returns the application with the given ID.
+      responses:
+        "200":
+          description: The requested application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Application"
+              example:
+                success: true
+                data:
+                  id: 1
+                  company: Google
+                  role: SWE
+                  status: applied
+                  appliedDate: "2026-06-01"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: Application not found
+
+    put:
+      summary: Partially update an application
+      description: >
+        Updates only the fields provided in the request body. Any field
+        omitted from the body is left unchanged. At least one field should
+        be sent, but all three (company, role, status) are optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                company:
+                  type: string
+                  example: Google
+                role:
+                  type: string
+                  example: SWE
+                status:
+                  type: string
+                  enum: [applied, interview, offer, rejected]
+                  example: interview
+            example:
+              status: interview
+      responses:
+        "200":
+          description: The updated application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Application"
+              example:
+                success: true
+                data:
+                  id: 1
+                  company: Google
+                  role: SWE
+                  status: interview
+                  appliedDate: "2026-06-01"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: Application not found
+
+    delete:
+      summary: Delete an application
+      description: Permanently removes the application with the given ID from in-memory storage.
+      responses:
+        "204":
+          description: Application deleted — no body returned
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: Application not found
