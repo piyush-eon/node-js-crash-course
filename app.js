@@ -8,6 +8,9 @@ const app = express();
 // Parses JSON request bodies into req.body — required for POST/PUT.
 app.use(express.json());
 
+// For Swagger
+app.use(express.static(__dirname));
+
 // Custom logging middleware. Must call next() or the request hangs forever.
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
