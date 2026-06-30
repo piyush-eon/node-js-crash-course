@@ -1,5 +1,18 @@
+const fs = require("fs");
+const path = require("path");
+
+const DATA_FILE = path.join(__dirname, "../data.json");
+
+function readData() {
+  const raw = fs.readFileSync(DATA_FILE, "utf-8");
+  return JSON.parse(raw).applications;
+}
+
+function writeData(applications) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ applications }, null, 2));
+}
+
 // ===== PART 4c: Response helpers =====
-// Keep the response shape consistent: { success, data } or { success, error }.
 function sendSuccess(res, status, data) {
   res.status(status).json({ success: true, data });
 }
@@ -8,23 +21,13 @@ function sendError(res, status, message) {
   res.status(status).json({ success: false, error: message });
 }
 
-// ===== PART 4b: Data store =====
-// In-memory "database" — resets on every restart, no real DB yet.
-let applications = [
-  { id: 1, company: "Google", role: "SWE", status: "applied", appliedDate: "2026-06-01" },
-  { id: 2, company: "Microsoft", role: "Frontend Engineer", status: "interview", appliedDate: "2026-06-05" },
-];
-
-// We generate ids ourselves since there's no database to do it for us.
-let nextId = 3;
-
 // ===== PART 4d: getAllApplications with sort/pagination =====
 // Supports ?status=, ?sort=date, and ?page=&limit= — all optional and combinable.
 // Order matters: filter first, then sort, then paginate.
 exports.getAllApplications = (req, res) => {
   const { status, sort, page, limit } = req.query;
 
-  let result = applications;
+  let result = readData();
 
   if (status) {
     result = result.filter((app) => app.status === status);
@@ -32,7 +35,9 @@ exports.getAllApplications = (req, res) => {
 
   // slice() first so we don't mutate the original array while sorting.
   if (sort === "date") {
-    result = result.slice().sort((a, b) => (a.appliedDate > b.appliedDate ? 1 : -1));
+    result = result
+      .slice()
+      .sort((a, b) => (a.appliedDate > b.appliedDate ? 1 : -1));
   }
 
   // Only paginate if both page and limit were given.
@@ -50,7 +55,7 @@ exports.getAllApplications = (req, res) => {
 // req.params.id arrives as a string, so we convert it before comparing.
 exports.getApplicationById = (req, res) => {
   const id = Number(req.params.id);
-  const application = applications.find((app) => app.id === id);
+  const application = readData().find((app) => app.id === id);
 
   if (!application) {
     return sendError(res, 404, "Application not found");
@@ -64,16 +69,19 @@ exports.getApplicationById = (req, res) => {
 exports.createApplication = (req, res) => {
   const { company, role, status } = req.body;
 
-  // company and role are the minimum we need to create a valid record.
   if (!company || !role) {
     return sendError(res, 400, "Company and role are required");
   }
 
-  // toISOString() gives "2026-06-23T...", we just want the date part.
+  const applications = readData();
+  const nextId =
+    applications.length > 0
+      ? Math.max(...applications.map((a) => a.id)) + 1
+      : 1;
   const appliedDate = new Date().toISOString().split("T")[0];
 
   const newApplication = {
-    id: nextId++,
+    id: nextId,
     company,
     role,
     status: status || "applied",
@@ -81,6 +89,7 @@ exports.createApplication = (req, res) => {
   };
 
   applications.push(newApplication);
+  writeData(applications);
 
   // 201 = Created
   sendSuccess(res, 201, newApplication);
@@ -90,6 +99,7 @@ exports.createApplication = (req, res) => {
 // Partial update: only overwrite fields the client actually sent.
 exports.updateApplication = (req, res) => {
   const id = Number(req.params.id);
+  const applications = readData();
   const application = applications.find((app) => app.id === id);
 
   if (!application) {
@@ -102,6 +112,7 @@ exports.updateApplication = (req, res) => {
   if (role !== undefined) application.role = role;
   if (status !== undefined) application.status = status;
 
+  writeData(applications);
   sendSuccess(res, 200, application);
 };
 
@@ -109,6 +120,7 @@ exports.updateApplication = (req, res) => {
 // Delete an application.
 exports.deleteApplication = (req, res) => {
   const id = Number(req.params.id);
+  const applications = readData();
   const index = applications.findIndex((app) => app.id === id);
 
   if (index === -1) {
@@ -116,6 +128,7 @@ exports.deleteApplication = (req, res) => {
   }
 
   applications.splice(index, 1);
+  writeData(applications);
 
   // 204 = No Content, so we skip the helpers and just end the response.
   res.status(204).end();
@@ -124,7 +137,7 @@ exports.deleteApplication = (req, res) => {
 // ===== PART 4i: getStats =====
 // Tally up applications per status, e.g. { applied: 2, interview: 1 }.
 exports.getStats = (req, res) => {
-  const counts = applications.reduce((acc, app) => {
+  const counts = readData().reduce((acc, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
     return acc;
   }, {});
